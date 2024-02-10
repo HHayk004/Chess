@@ -2,34 +2,42 @@
 #define CHESS_H
 
 #include <vector>
+#include <string>
 
 struct Point {
     int x;
     int y;
 };
 
+enum class Color {
+    White = 0, Black = 1
+};
+
 class Piece {
     private:
-        bool m_color; // 0 white, 1 black
+        Color m_color; // 0 white, 1 black
         int m_value; // value of piece Queen 9
 
-        virtual bool checkMove(Point dest) const;
+        virtual bool checkMove(Point end) const = 0;
     
     public:
-        Piece(bool color, int value);
+        Piece(Color color, int value);
         virtual ~Piece() = default;
 
         virtual void printPiece() const = 0;
 
         char getColor() const;
+
+        friend class Chess;
 };
 
 class Pawn : public Piece {
     private:
-        bool checkMove(Point dest) const override;
+        bool checkMove(Point end) const override 
+        {return true;}
 
     public:
-        Pawn(bool color);
+        Pawn(Color color);
         ~Pawn() override = default;
 
         void printPiece() const override;
@@ -37,10 +45,11 @@ class Pawn : public Piece {
 
 class Knight : public Piece {
     private:
-        bool checkMove(Point dest) const override;
+        bool checkMove(Point end) const override
+        {return true;}
         
     public:
-        Knight(bool color);
+        Knight(Color color);
         ~Knight() override = default;
 
         void printPiece() const override;
@@ -48,10 +57,11 @@ class Knight : public Piece {
 
 class Bishop : public Piece {
     private:
-        bool checkMove(Point dest) const override;
+        bool checkMove(Point end) const override
+        {return true;}
 
     public:
-        Bishop(bool color);
+        Bishop(Color color);
         ~Bishop() override = default;
        
         void printPiece() const override;
@@ -60,10 +70,11 @@ class Bishop : public Piece {
 class Rook : public Piece {
     private:
         bool m_castle_available;
-        bool checkMove(Point dest) const override;
+        bool checkMove(Point end) const override
+        {return true;}
 
     public:
-        Rook(bool color);
+        Rook(Color color);
         ~Rook() override = default;
         
         void printPiece() const override;
@@ -71,10 +82,11 @@ class Rook : public Piece {
 
 class Queen : public Piece {
     private:
-        bool checkMove(Point dest) const override;
+        bool checkMove(Point end) const override
+        {return true;}
 
     public:
-        Queen(bool color);
+        Queen(Color color);
         ~Queen() override = default;
         
         void printPiece() const override;
@@ -84,13 +96,14 @@ class King : public Piece {
     private:
         bool m_castle_available;
 
-        bool checkMove(Point dest) const override;
+        bool checkMove(Point end) const override
+        {return true;}
         
         bool checkShortCastle() const;
         bool checkLongCastle() const;
 
     public: 
-        King(bool color);
+        King(Color color);
         ~King() override = default;
 
         void printPiece() const override;
@@ -105,34 +118,35 @@ class Player {
         ~Player() = default;
 };
 
-class Board {
+class Chess {
+    private:
+        Color m_player_turn;
+        Player m_white;
+        Player m_black;    
+ 
         std::vector<std::vector<Piece*>> m_board;
+
+        void setPiece(const Point& coord, Piece* const piece);
+        Piece* getPiece(const Point& coord) const;
+
+        void initializeRow(int row_number, Color color, bool mode);
+
+        static bool checkInput(const std::string& move);
+        static void initializeCoordinates(Point& start, Point& end, const std::string& move);
         
-        void initializeRow(int row_number, bool color, bool mode);
+        bool checkStart(const Point& start) const;
+        bool checkEnd(const Point& end) const;
 
         bool checkCheck() const;
         bool checkGameOver() const;
 
     public:
-        Board();
-        ~Board();
+        Chess();
+        ~Chess();
+
+        void makeMove();
 
         void printBoard() const;
 };
-
-class Chess {
-    private:
-        bool m_turn;
-        Player m_white;
-        Player m_black;    
-
-    public:
-        Chess() = default;
-        ~Chess() = default;
-
-        Board m_data;
-};
-
-#include "chessFunc.cpp"
 
 #endif

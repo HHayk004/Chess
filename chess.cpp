@@ -3,7 +3,11 @@
 int main()
 {
     Chess game;
-    game.m_data.printBoard();
+    while (true)
+    {
+        game.printBoard();
+        game.makeMove();
+    }
 
     return 0;
 }
