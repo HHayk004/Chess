@@ -94,7 +94,7 @@ class Rook : public Piece {
         bool checkMove(Chess* const game, const Point& start, const Point& end) const override;
 
     public:
-        Rook(FigureColor color);
+        Rook(FigureColor color, bool castle_available);
         ~Rook() override = default;
 
         void setCastleAvailable(bool value);
@@ -149,7 +149,7 @@ class Player {
 };
 
 enum class MoveType {
-    TypeNone, TypePassant, TypeRook, TypeKing, TypeCastleLeft, TypeCastleRight
+    TypeNone, TypePassant, TypePromote, TypeRook, TypeKing, TypeCastleLeft, TypeCastleRight
 };
 
 class Chess {

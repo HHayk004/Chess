@@ -24,14 +24,14 @@ void Chess::initializeRow(int row_number, FigureColor color, bool mode)
 
     else
     {
-        m_board[row_number][0] = new Rook(color);
+        m_board[row_number][0] = new Rook(color, true);
         m_board[row_number][1] = new Knight(color);
         m_board[row_number][2] = new Bishop(color);
         m_board[row_number][3] = new Queen(color);
         m_board[row_number][4] = new King(color);
         m_board[row_number][5] = new Bishop(color);
         m_board[row_number][6] = new Knight(color);
-        m_board[row_number][7] = new Rook(color);
+        m_board[row_number][7] = new Rook(color, true);
     }
 }
 
@@ -307,7 +307,7 @@ Piece* Chess::movePiece(const Point& start, const Point& end, Piece*& piece_copy
 {
     piece_copy = copyPiece(start);
     Piece* piece = getPiece(end);
-    
+
     setPiece(end, getPiece(start));
     setPiece(start, nullptr);
 
@@ -463,6 +463,52 @@ void Chess::makeMove() {
                 if (isCheck(king_pos))
                 {
                     getPlayer(m_player_turn).setMove(start, end);
+                    
+                    if (m_current_move_type == MoveType::TypePromote)
+                    {
+                        delete getPiece(end);
+
+                        std::cout << "Enter the Promoted piece type: Knight(N), Bishop(B), Rook(R), Queen(Q): ";
+
+                        FigureColor color = getPlayerType();
+                        
+                        while(true)
+                        {
+                            char figure_type;
+                            
+                            std::cin >> figure_type;
+                            
+                            bool check = false;
+                            switch (figure_type)
+                            {
+                                case 'N':
+                                    setPiece(end, new Knight(color));            
+                                    check = true;
+                                    break;
+                        
+                                case 'B':
+                                    setPiece(end, new Bishop(color));            
+                                    check = true;
+                                    break;
+                        
+                                case 'R':
+                                    setPiece(end, new Rook(color, false));
+                                    check = true;
+                                    break;
+                        
+                                case 'Q':
+                                    setPiece(end, new Queen(color));            
+                                    check = true;
+                                    break;
+                            }
+                            
+                            if (check)
+                            {
+                                break;    
+                            }
+                        }
+                    }
+
                     m_current_move_type = MoveType::TypeNone;
                     
                     delete moved;
@@ -650,6 +696,11 @@ bool Pawn::checkMove(Chess* const game, const Point& start, const Point& end) co
     int delta_x = end.x - start.x;
     int delta_y = end.y - start.y;
 
+    if (end.x == 0 || end.x == 7)
+    {
+        game->setMoveType(MoveType::TypePromote);
+    }
+
     if (delta_y == 0)
     {
         if (getFigureColor() == 'W')
@@ -753,7 +804,7 @@ void Bishop::printPiece() const
     std::cout << getFigureColor() << getFigureType();
 }
 
-Rook::Rook(FigureColor color) : Piece(FigureType::Rook, color, 5), m_castle_available(true) {}
+Rook::Rook(FigureColor color, bool castle_available) : Piece(FigureType::Rook, color, 5), m_castle_available(castle_available) {}
 
 void Rook::setCastleAvailable(bool value)
 {
