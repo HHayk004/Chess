@@ -66,18 +66,13 @@ void Chess::initializeCoordinates(Point& start, Point& end, const std::string& m
 }
 
 void Chess::setPiece(const Point& coord, Piece* const piece)
-{
-    if (piece && getPiece(coord))
-    {
-        delete getPiece(coord);
-    }
-    
+{ 
     m_board[coord.x][coord.y] = piece;
 }
 
 Piece* Chess::getPiece(const Point& coord) const
 {
-     return m_board[coord.x][coord.y];
+    return m_board[coord.x][coord.y];
 }
 
 void Chess::setMoveType(MoveType type)
@@ -161,7 +156,7 @@ bool Chess::checkMoveDiagonal(const Point& start, const Point& end) const
 
 Piece* Chess::pieceInLine(Point start, Point end, const Point& delta) const
 {
-    while (start != end)
+    while (borderCheck(start.x + delta.x) && borderCheck(start.y + delta.y) && start != end)
     {
         start.x += delta.x;
         start.y += delta.y;
@@ -176,50 +171,182 @@ Piece* Chess::pieceInLine(Point start, Point end, const Point& delta) const
     return nullptr;
 }
 
-bool Chess::isCheck() const
+bool Chess::isCheck(const Point& coord) const
 {
+    int horizontal_x[] = {-1, 1, 0, 0};
+    int horizontal_y[] = {0, 0, -1, 1};
+    
+    int diagonal_x[] = {-1, -1, 1, 1};
+    int diagonal_y[] = {-1, 1, -1, 1};
+
+    char color = 'W';
+
+    if (getPlayerType() == FigureColor::Black)
+    {
+        color = 'B';
+    }
+
+    for (int i = 0; i < 4; ++i)
+    {
+        const Point out_board = {-1, -1};
+        Point dir = {horizontal_x[i], horizontal_y[i]};
+        Piece* piece = pieceInLine(coord, out_board, dir);
+
+        if (piece)
+        {
+            char type = piece->getFigureType();
+            if (piece->getFigureColor() != color && (type == 'R' || type == 'Q'))
+            {
+                return false;
+            }
+        }
+
+        Point king = {coord.x + horizontal_x[i], coord.y + horizontal_y[i]};
+        
+        if (borderCheck(king.x) && borderCheck(king.y))
+        {
+            Piece* piece = getPiece(king);
+            if (piece && piece->getFigureType() == 'K')
+            {
+                return false;
+            }
+        }
+
+        dir = {diagonal_x[i], diagonal_y[i]};
+        piece = pieceInLine(coord, out_board, dir);
+        
+        if (piece)
+        {
+            char type = piece->getFigureType();
+            if (piece->getFigureColor() != color && (type == 'B' || type == 'Q'))
+            {
+                return false;
+            }
+        }
+
+        king = {coord.x + diagonal_x[i], coord.y + diagonal_y[i]};
+
+        if (borderCheck(king.x) && borderCheck(king.y))
+        {
+            Piece* piece = getPiece(king);
+            if (piece && piece->getFigureType() == 'K')
+            {
+                return false;
+            }
+        }
+    }
+
+    int knight_x[] = {2, 2, -2, -2, 1, 1, -1, -1};
+    int knight_y[] = {1, -1, 1, -1, 2, -2, 2, -2};
+
+    for (int i = 0; i < 8; ++i)
+    {
+        Point knight_coord = {coord.x + knight_x[i], coord.y + knight_y[i]};
+        if (borderCheck(knight_coord.x) && borderCheck(knight_coord.y))
+        {
+            Piece* piece = getPiece(knight_coord);
+            if (piece && piece->getFigureColor() != color && piece->getFigureType() == 'N')
+            {
+                return false;
+            }
+        }
+    }
+
+    int pawn_x = 1;
+
+    if (getPlayerType() == FigureColor::White)
+    {
+        pawn_x = -1;
+    }
+
+    int pawn_y[] = {-1, 1};
+    for (int i = 0; i < 2; ++i)
+    {
+        Point pawn_coord = {coord.x - pawn_x, coord.y + pawn_y[i]};
+        if (borderCheck(pawn_coord.x) && borderCheck(pawn_coord.y))
+        {
+            Piece* piece = getPiece(pawn_coord);
+            if (piece && piece->getFigureColor() != color && piece->getFigureType() == 'P')
+            {
+                return false;
+            }
+        }
+    }
+
     return true;
 }
 
-void Chess::movePiece(const Point& start, const Point& end)
+Piece* Chess::copyPiece(const Point& coord) const
 {
-    Piece* piece = getPiece(end);
+    Piece* piece = getPiece(coord);
+
+    switch (piece->getFigureType()) {
+        case 'P':
+            return new Pawn (*dynamic_cast<Pawn*>(piece));
+
+        case 'N':
+            return new Knight (*dynamic_cast<Knight*>(piece));
+
+        case 'B':
+            return new Bishop (*dynamic_cast<Bishop*>(piece));
     
-    if (piece)
-    {
-        delete piece;
+        case 'R':
+            return new Rook (*dynamic_cast<Rook*>(piece));
+    
+        case 'Q':
+            return new Queen (*dynamic_cast<Queen*>(piece));
+
+        case 'K':
+            return new King (*dynamic_cast<King*>(piece));
     }
 
+    return nullptr;
+}
+
+Piece* Chess::movePiece(const Point& start, const Point& end, Piece*& piece_copy)
+{
+    piece_copy = copyPiece(start);
+    Piece* piece = getPiece(end);
+    
     setPiece(end, getPiece(start));
     setPiece(start, nullptr);
 
     switch (m_current_move_type)
     {
         case MoveType::TypePassant:
+        {
+            int delta_x = 1;
+            if (getPlayerType() == FigureColor::Black)
             {
-                int delta_x = 1;
-                if (getPlayerType() == FigureColor::Black)
-                {
-                    delta_x = -1;
-                }
-
-                setPiece({end.x + delta_x, end.y}, nullptr); 
-                break;
+                delta_x = -1;
             }
+
+            Point eaten = {end.x + delta_x, end.y};
+            piece = getPiece(eaten);
+
+            setPiece(eaten, nullptr); 
+            break;
+        }
     
         case MoveType::TypeRook:
-            {
-                Rook* rook = dynamic_cast<Rook*>(getPiece(end));
-                rook->setCastleAvailable(false);
-                break;
-            }
+        {
+            Rook* rook = dynamic_cast<Rook*>(getPiece(end));
+            rook->setCastleAvailable(false);
+            break;
+        }
 
         case MoveType::TypeKing:
+        {
+            King* king = dynamic_cast<King*>(getPiece(end));
+            king->setCastleAvailable(false);
+            
+            if (getPlayerType() == FigureColor::White)
             {
-                King* king = dynamic_cast<King*>(getPiece(end));
-                king->setCastleAvailable(false);
-                break;
+                m_white.setKingPosition(end);   
             }
+        
+            break;
+        }
 
         case MoveType::TypeCastleLeft:
             setPiece({start.x, 3}, getPiece({start.x, 0}));
@@ -232,6 +359,63 @@ void Chess::movePiece(const Point& start, const Point& end)
             break;
     }
 
+    return piece;
+}
+
+void Chess::reMovePiece(const Point& start, const Point& end, Piece* moved, Piece* eaten)
+{
+    delete getPiece(end);
+    setPiece(start, moved);
+
+    switch (m_current_move_type)
+    {
+        case MoveType::TypePassant:
+        {
+            Point pt = start;
+            if (getPlayerType() == FigureColor::White)
+            {
+                --pt.x;
+            }
+            
+            else
+            {
+                ++pt.x;
+            }
+        
+            setPiece(pt, eaten);
+            break;
+        }
+
+        case MoveType::TypeCastleLeft:
+        {    
+            setPiece({start.x, 0}, getPiece({start.x, start.y + 1}));
+            setPiece({start.x, start.y + 1}, nullptr);  
+            
+            Rook* rook = dynamic_cast<Rook*>(getPiece({start.x, 0}));
+            King* king = dynamic_cast<King*>(getPiece(start));
+
+            rook->setCastleAvailable(true);
+            king->setCastleAvailable(true);
+
+            break;
+        }
+
+        case MoveType::TypeCastleRight:
+        {
+            setPiece({start.x, 7}, getPiece({start.x, start.y - 1}));
+            setPiece({start.x, start.y - 1}, nullptr);
+
+            Rook* rook = dynamic_cast<Rook*>(getPiece({start.x, 7}));
+            King* king = dynamic_cast<King*>(getPiece(start));
+
+            rook->setCastleAvailable(true);
+            king->setCastleAvailable(true);
+            break;
+        }
+
+        default:
+            setPiece(end, eaten);
+    }
 }
 
 void Chess::makeMove() {
@@ -258,13 +442,40 @@ void Chess::makeMove() {
         {
             initializeCoordinates(start, end, move);       
             if (checkStart(start) && checkEnd(end) && 
-                m_board[start.x][start.y]->checkMove(this, start, end) && isCheck())
+                getPiece(start)->checkMove(this, start, end))
             {
                 // if eating, update score
-                movePiece(start, end);
-                getPlayer(m_player_turn).setMove(start, end);
-                m_current_move_type = MoveType::TypeNone;
-                break;
+                Piece* moved;
+                Piece* eaten = movePiece(start, end, moved);
+
+                Point king_pos;
+
+                if (getPlayerType() == FigureColor::White)
+                {
+                    king_pos = m_white.getKingPosition();
+                }
+
+                else
+                {
+                    king_pos = m_black.getKingPosition();
+                }
+
+                if (isCheck(king_pos))
+                {
+                    getPlayer(m_player_turn).setMove(start, end);
+                    m_current_move_type = MoveType::TypeNone;
+                    
+                    delete moved;
+
+                    if (eaten)
+                    {
+                        delete eaten;
+                    }
+                
+                    break;
+                }
+
+                reMovePiece(start, end, moved, eaten);
             }
 
             m_current_move_type = MoveType::TypeNone;
@@ -299,6 +510,11 @@ Player& Chess::getPlayer(FigureColor color)
 
 bool Chess::checkCastle(const Point& start, const Point& end) const
 {
+    if (!isCheck(start))
+    {
+        return false;
+    }
+
     checkMoveLinear(start, end);
 
     King* king = dynamic_cast<King*>(getPiece(start));
@@ -368,6 +584,16 @@ Point Player::getMoveStart() const
 Point Player::getMoveEnd() const
 {
     return m_last_move_end;
+}
+
+void Player::setKingPosition(const Point& pos)
+{
+    m_king_position = pos;
+}
+
+Point Player::getKingPosition() const
+{
+    return m_king_position;
 }
 
 Piece::Piece(FigureType type, FigureColor color, int value) : m_type(type), m_color(color), m_value(value) {}

@@ -143,6 +143,9 @@ class Player {
         void setMove(const Point& start, const Point& end);
         Point getMoveStart() const;
         Point getMoveEnd() const;
+
+        void setKingPosition(const Point& pos);
+        Point getKingPosition() const;
 };
 
 enum class MoveType {
@@ -173,9 +176,12 @@ class Chess {
 
         Piece* pieceInLine(Point start, Point end, const Point& delta) const;
 
-        void movePiece(const Point& start, const Point& end);
+        Piece* copyPiece(const Point& coord) const;
 
-        bool isCheck() const;
+        Piece* movePiece(const Point& start, const Point& end, Piece*& piece_copy);
+        void reMovePiece(const Point& start, const Point& end, Piece* moved, Piece* eaten);
+
+        bool isCheck(const Point& coord) const;
         bool checkGameOver() const;
 
     public:
