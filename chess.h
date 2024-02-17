@@ -149,7 +149,7 @@ class Player {
 };
 
 enum class MoveType {
-    TypeNone, TypePassant, TypePromote, TypeRook, TypeKing, TypeCastleLeft, TypeCastleRight
+    None, Passant, Promote, Rook, King, CastleLeft, CastleRight
 };
 
 class Chess {
@@ -180,6 +180,8 @@ class Chess {
 
         Piece* movePiece(const Point& start, const Point& end, Piece*& piece_copy);
         void reMovePiece(const Point& start, const Point& end, Piece* moved, Piece* eaten);
+
+        void changeKingCoordinates(const Point& coord);
 
         bool isCheck(const Point& coord) const;
         bool checkGameOver() const;

@@ -4,7 +4,7 @@
 
 Chess::Chess() : m_player_turn(FigureColor::White),
     m_white({7, 4}), m_black({0, 4}), 
-    m_board(8, std::vector<Piece*>(8, nullptr)), m_current_move_type(MoveType::TypeNone)
+    m_board(8, std::vector<Piece*>(8, nullptr)), m_current_move_type(MoveType::None)
 {
     initializeRow(0, FigureColor::Black, 0);
     initializeRow(1, FigureColor::Black, 1);
@@ -303,6 +303,19 @@ Piece* Chess::copyPiece(const Point& coord) const
     return nullptr;
 }
 
+void Chess::changeKingCoordinates(const Point& coord)
+{
+    if (getPlayerType() == FigureColor::White)
+    {
+        m_white.setKingPosition(coord);   
+    }
+
+    else
+    {
+        m_black.setKingPosition(coord);
+    }
+}
+
 Piece* Chess::movePiece(const Point& start, const Point& end, Piece*& piece_copy)
 {
     piece_copy = copyPiece(start);
@@ -313,7 +326,7 @@ Piece* Chess::movePiece(const Point& start, const Point& end, Piece*& piece_copy
 
     switch (m_current_move_type)
     {
-        case MoveType::TypePassant:
+        case MoveType::Passant:
         {
             int delta_x = 1;
             if (getPlayerType() == FigureColor::Black)
@@ -328,34 +341,37 @@ Piece* Chess::movePiece(const Point& start, const Point& end, Piece*& piece_copy
             break;
         }
     
-        case MoveType::TypeRook:
+        case MoveType::Rook:
         {
             Rook* rook = dynamic_cast<Rook*>(getPiece(end));
             rook->setCastleAvailable(false);
             break;
         }
 
-        case MoveType::TypeKing:
+        case MoveType::King:
         {
             King* king = dynamic_cast<King*>(getPiece(end));
             king->setCastleAvailable(false);
-            
-            if (getPlayerType() == FigureColor::White)
-            {
-                m_white.setKingPosition(end);   
-            }
-        
+           
+            changeKingCoordinates(end);
+
             break;
         }
 
-        case MoveType::TypeCastleLeft:
+        case MoveType::CastleLeft:
             setPiece({start.x, 3}, getPiece({start.x, 0}));
             setPiece({start.x, 0}, nullptr);  
+            
+            changeKingCoordinates(end);
+            
             break;
 
-        case MoveType::TypeCastleRight:
+        case MoveType::CastleRight:
             setPiece({start.x, 5}, getPiece({start.x, 7}));
             setPiece({start.x, 7}, nullptr);  
+            
+            changeKingCoordinates(end);
+            
             break;
     }
 
@@ -369,7 +385,7 @@ void Chess::reMovePiece(const Point& start, const Point& end, Piece* moved, Piec
 
     switch (m_current_move_type)
     {
-        case MoveType::TypePassant:
+        case MoveType::Passant:
         {
             Point pt = start;
             if (getPlayerType() == FigureColor::White)
@@ -386,7 +402,7 @@ void Chess::reMovePiece(const Point& start, const Point& end, Piece* moved, Piec
             break;
         }
 
-        case MoveType::TypeCastleLeft:
+        case MoveType::CastleLeft:
         {    
             setPiece({start.x, 0}, getPiece({start.x, start.y + 1}));
             setPiece({start.x, start.y + 1}, nullptr);  
@@ -397,10 +413,12 @@ void Chess::reMovePiece(const Point& start, const Point& end, Piece* moved, Piec
             rook->setCastleAvailable(true);
             king->setCastleAvailable(true);
 
+            changeKingCoordinates(start);
+
             break;
         }
 
-        case MoveType::TypeCastleRight:
+        case MoveType::CastleRight:
         {
             setPiece({start.x, 7}, getPiece({start.x, start.y - 1}));
             setPiece({start.x, start.y - 1}, nullptr);
@@ -410,8 +428,14 @@ void Chess::reMovePiece(const Point& start, const Point& end, Piece* moved, Piec
 
             rook->setCastleAvailable(true);
             king->setCastleAvailable(true);
+            
+            changeKingCoordinates(start);
+        
             break;
         }
+
+        case MoveType::King:
+            changeKingCoordinates(start);
 
         default:
             setPiece(end, eaten);
@@ -464,7 +488,7 @@ void Chess::makeMove() {
                 {
                     getPlayer(m_player_turn).setMove(start, end);
                     
-                    if (m_current_move_type == MoveType::TypePromote)
+                    if (m_current_move_type == MoveType::Promote)
                     {
                         delete getPiece(end);
 
@@ -509,7 +533,7 @@ void Chess::makeMove() {
                         }
                     }
 
-                    m_current_move_type = MoveType::TypeNone;
+                    m_current_move_type = MoveType::None;
                     
                     delete moved;
 
@@ -524,7 +548,7 @@ void Chess::makeMove() {
                 reMovePiece(start, end, moved, eaten);
             }
 
-            m_current_move_type = MoveType::TypeNone;
+            m_current_move_type = MoveType::None;
         }
     }
 
@@ -570,12 +594,12 @@ bool Chess::checkCastle(const Point& start, const Point& end) const
     {
         if (start.y > end.y)
         {
-            m_current_move_type = MoveType::TypeCastleLeft;
+            m_current_move_type = MoveType::CastleLeft;
         }
 
         else
         {
-            m_current_move_type = MoveType::TypeCastleRight;
+            m_current_move_type = MoveType::CastleRight;
         }
      
         return true;
@@ -698,7 +722,7 @@ bool Pawn::checkMove(Chess* const game, const Point& start, const Point& end) co
 
     if (end.x == 0 || end.x == 7)
     {
-        game->setMoveType(MoveType::TypePromote);
+        game->setMoveType(MoveType::Promote);
     }
 
     if (delta_y == 0)
@@ -763,7 +787,7 @@ bool Pawn::checkMove(Chess* const game, const Point& start, const Point& end) co
 
             if (last_move_start == must_start && last_move_end == side)
             {
-                game->setMoveType(MoveType::TypePassant);
+                game->setMoveType(MoveType::Passant);
                 return true;
             }
         }
@@ -820,7 +844,7 @@ bool Rook::checkMove(Chess* const game, const Point& start, const Point& end) co
 {
     if (game->checkMoveLinear(start, end))
     {
-        game->setMoveType(MoveType::TypeRook);
+        game->setMoveType(MoveType::Rook);
         return true;
     }
 
@@ -863,7 +887,7 @@ bool King::checkMove(Chess* const game, const Point& start, const Point& end) co
     
     if (abs(delta_x) <= 1 && abs(delta_y) <= 1)
     {
-        game->setMoveType(MoveType::TypeKing);
+        game->setMoveType(MoveType::King);
         return true;
     }
 
